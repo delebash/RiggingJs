@@ -1,7 +1,6 @@
 import React from 'react';
 import './App.css';
 import CameraViewer from "./components/CameraViewer";
-import ModelViewer from "./components/ModelViewer";
 
 navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
 
@@ -19,7 +18,6 @@ class App extends React.Component {
         const {videoWidth, videoHeight} = this.state;
         return (
             <React.Fragment>
-                <ModelViewer />
                 <CameraViewer videoWidth={videoWidth} videoHeight={videoHeight} />
             </React.Fragment>
         );

@@ -18,7 +18,7 @@ import { bindActionCreators } from "redux";
 import * as actions from "../../redux/actions/CameraViewerActions"
 import VisUtil from "../../util/vis.util";
 import GeometryUtil from "../../util/geometry.util";
-import * as posenet from '@tensorflow-models/posenet';
+// import * as posenet from '@tensorflow-models/posenet';
 import * as facemesh from '@tensorflow-models/facemesh';
 import * as tf from '@tensorflow/tfjs';
 const requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||  window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
@@ -44,7 +44,7 @@ class CameraViewer extends React.Component {
         this.cam = null;
         // models
         this.facemeshModel =null;
-        this.posenetModel =null;
+        //this.posenetModel =null;
         this.deviceSelectRef = React.createRef();
         // canvas ref
         this.videoCanvasRef = React.createRef();
@@ -59,20 +59,20 @@ class CameraViewer extends React.Component {
 
     computeHeadPoseEstimation(face){
         const {origin, rotationMatrix} = GeometryUtil.computeHeadPoseEstimation(face);
-        VisUtil.drawAxis(this.drawCanvasCtx, origin, rotationMatrix);
+      //  VisUtil.drawAxis(this.drawCanvasCtx, origin, rotationMatrix);
         const {pitch, yaw, roll} = math.rotationMatrixToEulerAngles(rotationMatrix);
-        this.updateHeadRotation({pitch, yaw, roll});
+        //this.updateHeadRotation({pitch, yaw, roll});
     }
     componentDidMount=async ()=>{
         try {
             this.facemeshModel = await facemesh.load({maxFaces: 1});
-            this.posenetModel = await posenet.load({
-                architecture: defaultPoseNetArchitecture,
-                outputStride: defaultStride,
-                inputResolution: defaultInputResolution,
-                multiplier: defaultMultiplier,
-                quantBytes: defaultQuantBytes
-            })
+            // this.posenetModel = await posenet.load({
+            //     architecture: defaultPoseNetArchitecture,
+            //     outputStride: defaultStride,
+            //     inputResolution: defaultInputResolution,
+            //     multiplier: defaultMultiplier,
+            //     quantBytes: defaultQuantBytes
+            // })
         }
         catch (e) {
             console.log(`error loading the model ${e.toString()}`);
@@ -121,12 +121,12 @@ class CameraViewer extends React.Component {
             const inputFrame = tf.browser.fromPixels(canvas);
             const faces = await this.facemeshModel.estimateFaces(inputFrame,
                 returnTensors, flipHorizontal);
-            const poses = await this.posenetModel.estimatePoses(inputFrame, {
-                decodingMethod: 'single-person',
-                maxDetections: 1,
-                scoreThreshold: minPartConfidence,
-                nmsRadius: nmsRadius
-            });
+            // const poses = await this.posenetModel.estimatePoses(inputFrame, {
+            //     decodingMethod: 'single-person',
+            //     maxDetections: 1,
+            //     scoreThreshold: minPartConfidence,
+            //     nmsRadius: nmsRadius
+            // });
 
             // clear canvas
             this.drawCanvasCtx.clearRect(0, 0, videoWidth, videoHeight);
@@ -142,25 +142,25 @@ class CameraViewer extends React.Component {
                     this.computeHeadPoseEstimation(faces[0]);
                 }
             } else {
-                this.updateHeadRotation(null);
+               // this.updateHeadRotation(null);
                 this.updateFaceMeshKeypoints(null);
             }
 
             this.drawCanvasCtx.restore();
 
-            //draw posenet predictions
-            if (poses && poses.length > 0) {
-                if (this.cam.isRunning) {
-                    this.drawCanvasCtx.save();
-                    this.drawCanvasCtx.translate(0, 0);
-                    VisUtil.drawPose(this.drawCanvasCtx, poses[0],
-                        minPoseConfidence, minPartConfidence, 1, "green");
-                    this.updatePosenetKeypoints(poses[0]);
-                }
-            }
-            else {
-                this.updatePosenetKeypoints(null);
-            }
+            // //draw posenet predictions
+            // if (poses && poses.length > 0) {
+            //     if (this.cam.isRunning) {
+            //         this.drawCanvasCtx.save();
+            //         this.drawCanvasCtx.translate(0, 0);
+            //         VisUtil.drawPose(this.drawCanvasCtx, poses[0],
+            //             minPoseConfidence, minPartConfidence, 1, "green");
+            //         this.updatePosenetKeypoints(poses[0]);
+            //     }
+            // }
+            // else {
+            //     this.updatePosenetKeypoints(null);
+            // }
             this.drawCanvasCtx.restore();
         }
         catch (e) {
@@ -198,8 +198,8 @@ class CameraViewer extends React.Component {
                     }
                     else{
                         this.updateFaceMeshKeypoints(null);
-                        this.updateHeadRotation(null);
-                        this.updatePosenetKeypoints(null)
+                        //this.updateHeadRotation(null);
+                       // this.updatePosenetKeypoints(null)
                         cancelAnimationFrame(this.requestAnimation); // kill animation
                         return;
                     }
@@ -244,11 +244,11 @@ class CameraViewer extends React.Component {
         const wrapperCanvasStyle = {
             position: "absolute",
             top: 0,
-            left: 0
+            left: 0,
         };
         return (
-            <Draggable >
-                <Card elevation={20} style={{ zIndex: 1, position: "absolute", top: 50, left: 50}}>
+     
+                <Card elevation={20} style={{ zIndex: 1, position: "absolute", top: 0, left: 0}}>
                     <CardHeader
                         style={{cursor: "move"}}
                         avatar={
@@ -305,7 +305,7 @@ class CameraViewer extends React.Component {
                     </Grid>
                     </CardContent>
                 </Card>
-            </Draggable>
+     
 
         )
     }
