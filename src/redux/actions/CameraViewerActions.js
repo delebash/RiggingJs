@@ -22,4 +22,10 @@ export function updateHeadRotation(value) {
     }
 }
 
+export function updateHandKeypoints(points) {
+    return {
+        type: actionTypes.UPDATE_HAND_KEYPOINTS,
+        payload: points
+    }
+}
 

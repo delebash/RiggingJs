@@ -2,6 +2,7 @@ import React from 'react';
 import Camera from "../../core/camera";
 import MenuItem from "@material-ui/core/MenuItem";
 import Select from "@material-ui/core/Select";
+import InputLabel from '@material-ui/core/InputLabel';
 
 export default class DeviceSelect extends React.Component {
     constructor(props) {
@@ -33,8 +34,14 @@ export default class DeviceSelect extends React.Component {
         const items = devicesList.map((d, i) =>
             <MenuItem key={i} value={d.id}>{d.label}</MenuItem>
         );
-        return (<Select label="Select the camera" value={deviceId} onChange={this.onChangeHandler} style={{minWidth: 280}}>
+        return (
+            <div>
+        <InputLabel id="device-label">Select device</InputLabel>
+        <Select
+        value={deviceId} 
+        onChange={this.onChangeHandler} style={{minWidth: 280}}>
             {items}
-        </Select>);
+        </Select>
+        </div>);
     }
 }
