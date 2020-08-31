@@ -1,5 +1,7 @@
 import {TriangulationUtil} from "./triangulation.util"
 import * as posenet from '@tensorflow-models/posenet';
+import StreamData from "./stream_data";
+
 const math = window.math;
 const fingerLookupIndices = {
     thumb: [0, 1, 2, 3, 4],
@@ -160,23 +162,23 @@ export default class VisUtil {
     }
     static drawHandKeypoints(ctx,keypoints,color,scale, pointSize) {
         const keypointsArray = keypoints;
-
+        const fingers = Object.keys(fingerLookupIndices);
+        for (let i = 0; i < fingers.length; i++) {
+            const finger = fingers[i];
+            const points = fingerLookupIndices[finger].map(idx => keypoints[idx]);
+            //Send Data to be streamed
+            StreamData.getData(points, finger)
+            this.drawHandPath(ctx,points, false,color);
+        }
         for (let i = 0; i < keypointsArray.length; i++) {
             const y = keypointsArray[i][0];
             const x = keypointsArray[i][1];
             this.drawHandPoint(ctx, x * scale, y * scale, 2, color, pointSize);
             //this.drawHandPoint(ctx,x - 2, y - 2, 3,color);
         }
-
-        const fingers = Object.keys(fingerLookupIndices);
-        for (let i = 0; i < fingers.length; i++) {
-            const finger = fingers[i];
-            const points = fingerLookupIndices[finger].map(idx => keypoints[idx]);
-            this.drawHandPath(ctx,points, false,color);
-        }
     }
 
-    static drawHandPath(ctx, points, closePath,color) {
+      static drawHandPath(ctx, points, closePath,color) {
         const region = new Path2D();
         region.moveTo(points[0][0], points[0][1]);
         for (let i = 1; i < points.length; i++) {

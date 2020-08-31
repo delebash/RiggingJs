@@ -28,8 +28,8 @@ const requestAnimationFrame = window.requestAnimationFrame || window.mozRequestA
 const cancelAnimationFrame = window.cancelAnimationFrame || window.mozCancelAnimationFrame;
 const math = window.math;
 
-const defaultPoseNetArchitecture = 'MobileNetV1';
-const defaultQuantBytes = 2;
+const defaultPoseNetArchitecture = 'ResNet50';
+const defaultQuantBytes = 4;
 const defaultMultiplier = 1.0;
 const defaultStride = 16;
 const defaultInputResolution = 200;
@@ -212,10 +212,10 @@ class CameraViewer extends React.Component {
                         this.drawCanvasCtx.translate(0, 0);
                       //  this.drawCanvasCtx.scale(-1, 1);
                         VisUtil.drawHand(this.drawCanvasCtx, hands[0],1,"red");
-                        this.updateHandKeypoints(hands[0]);
+                        this.updateHandposeKeypoints(hands[0]);
                     }
                 } else {
-                    this.updateHandKeypoints(null);
+                    this.updateHandposeKeypoints(null);
 
                 }
             }
@@ -257,7 +257,7 @@ class CameraViewer extends React.Component {
                         this.updateFaceMeshKeypoints(null);
                         // this.updateHeadRotation(null);
                         this.updatePosenetKeypoints(null)
-                        this.updateHandKeypoints(null);
+                        this.updateHandposeKeypoints(null);
                         cancelAnimationFrame(this.requestAnimation); // kill animation
                         return;
                     }
