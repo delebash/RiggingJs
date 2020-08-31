@@ -1,12 +1,17 @@
 import {TriangulationUtil} from "./triangulation.util"
 import * as posenet from '@tensorflow-models/posenet';
 const math = window.math;
-
+const fingerLookupIndices = {
+    thumb: [0, 1, 2, 3, 4],
+    indexFinger: [0, 5, 6, 7, 8],
+    middleFinger: [0, 9, 10, 11, 12],
+    ringFinger: [0, 13, 14, 15, 16],
+    pinky: [0, 17, 18, 19, 20],
+};
 export default class VisUtil {
 
     static drawPath(ctx, points, closePath) {
         const region = new Path2D();
-        //ctx.strokeStyle = "white";//"#00FF00";
         region.moveTo(points[0][0], points[0][1]);
         for (let i = 1; i < points.length; i++) {
             const point = points[i];
@@ -17,6 +22,7 @@ export default class VisUtil {
         }
         ctx.stroke(region);
     }
+
     static toTuple({y, x}) {
         return [y, x];
     }
@@ -122,7 +128,6 @@ export default class VisUtil {
         }
     }
 
-
     static drawPose(ctx, pose, minPoseConfidence, minPartConfidence, scale=1, color="red") {
         const {score, keypoints} = pose;
         if (score >= minPoseConfidence) {
@@ -131,12 +136,58 @@ export default class VisUtil {
         }
     }
 
-    static drawFace(ctx, face) {
+    static drawFace(ctx, face,color) {
         var mesh = face.scaledMesh;
-        ctx.fillStyle = "#00FF00";
+        ctx.fillStyle = color;
         for (let i = 0; i < mesh.length; i++) {
             var [x, y, z] = mesh[i];
             ctx.fillRect(Math.round(x), Math.round(y), 2, 2);
         }
+    }
+
+
+    static drawHand(ctx, hand,scale, color,pointSize) {
+        let keypoints  = hand.landmarks
+        this.drawHandKeypoints(ctx,keypoints,color,scale, pointSize)
+    }
+
+    static drawHandPoint(ctx,y, x, r,color, pointSize) {
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, 2 * Math.PI);
+        ctx.fillStyle = "blue";
+        ctx.fill();
+
+    }
+    static drawHandKeypoints(ctx,keypoints,color,scale, pointSize) {
+        const keypointsArray = keypoints;
+
+        for (let i = 0; i < keypointsArray.length; i++) {
+            const y = keypointsArray[i][0];
+            const x = keypointsArray[i][1];
+            this.drawHandPoint(ctx, x * scale, y * scale, 2, color, pointSize);
+            //this.drawHandPoint(ctx,x - 2, y - 2, 3,color);
+        }
+
+        const fingers = Object.keys(fingerLookupIndices);
+        for (let i = 0; i < fingers.length; i++) {
+            const finger = fingers[i];
+            const points = fingerLookupIndices[finger].map(idx => keypoints[idx]);
+            this.drawHandPath(ctx,points, false,color);
+        }
+    }
+
+    static drawHandPath(ctx, points, closePath,color) {
+        const region = new Path2D();
+        region.moveTo(points[0][0], points[0][1]);
+        for (let i = 1; i < points.length; i++) {
+            const point = points[i];
+            region.lineTo(point[0], point[1]);
+        }
+
+        if (closePath) {
+            region.closePath();
+        }
+        ctx.strokeStyle = color;
+        ctx.stroke(region);
     }
 }

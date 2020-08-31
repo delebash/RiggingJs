@@ -3,7 +3,6 @@ import actionsTypes from "../action_types/CameraViewerActionTypes"
 var initialState = {
     facemesh_keypoints : null,
     posenet_keypoints : null,
-    head_rotation: null,
     hand_keypoints: null
 };
 export default function reducer(state=initialState, action){
@@ -17,11 +16,6 @@ export default function reducer(state=initialState, action){
             return {
                 ...state,
                 posenet_keypoints: action.payload
-            };
-        case actionsTypes.UPDATE_HEAD_ROTATION:
-            return {
-                ...state,
-                head_rotation: action.payload
             };
             case actionsTypes.UPDATE_HAND_KEYPOINTS:
                 return {
