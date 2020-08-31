@@ -99,7 +99,7 @@ class CameraViewer extends React.Component {
      */
     updateFaceMeshKeypoints = (value) => {
         const {actions} = this.props;
-        actions.updateFaceMeshKeypoints1(value);
+        actions.updateFaceMeshKeypoints(value);
     };
 
     /**
@@ -108,7 +108,7 @@ class CameraViewer extends React.Component {
      */
     updateHandposeKeypoints = (value) => {
         const {actions} = this.props;
-        actions.updateHandposeKeypoints1(value);
+        actions.updateHandposeKeypoints(value);
     };
 
     /**
@@ -117,7 +117,7 @@ class CameraViewer extends React.Component {
      */
     updatePosenetKeypoints = (value) => {
         const {actions} = this.props;
-        actions.updatePosenetKeypoints1(value);
+        actions.updatePosenetKeypoints(value);
     };
 
 
