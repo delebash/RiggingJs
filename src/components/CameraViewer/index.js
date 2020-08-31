@@ -62,17 +62,6 @@ class CameraViewer extends React.Component {
         this.requestAnimation = null;
     }
 
-    computeHeadPoseEstimation(face) {
-        const {origin, rotationMatrix} = GeometryUtil.computeHeadPoseEstimation(face);
-        VisUtil.drawAxis(this.drawCanvasCtx, origin, rotationMatrix);
-        const {pitch, yaw, roll} = math.rotationMatrixToEulerAngles(rotationMatrix);
-        this.updateHeadRotation({
-            pitch,
-            yaw,
-            roll
-        });
-    }
-
     componentDidMount = async () => {
         try {
 
@@ -401,4 +390,3 @@ const mapDispatchToProps = (dispatch) => {
     return {actions: bindActionCreators(actions, dispatch)}
 };
 export default connect(mapStateToProps, mapDispatchToProps)(CameraViewer);
-

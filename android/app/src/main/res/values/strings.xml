@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">riggingjsstream</string>
+    <string name="title_activity_main">riggingjsstream</string>
+    <string name="package_name">com.riggingjs.stream</string>
+    <string name="custom_url_scheme">com.riggingjs.stream</string>
+</resources>
