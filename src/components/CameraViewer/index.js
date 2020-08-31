@@ -174,7 +174,7 @@ class CameraViewer extends React.Component {
                     if (this.cam.isRunning) {
                         this.drawCanvasCtx.save();
                         this.drawCanvasCtx.translate(0, 0);
-                        VisUtil.drawFace(this.drawCanvasCtx, faces[0]);
+                        VisUtil.drawFace(this.drawCanvasCtx, faces[0],"yellow");
                         this.updateFaceMeshKeypoints(faces[0]);
                     }
                 } else {
