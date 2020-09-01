@@ -19,6 +19,7 @@ import {bindActionCreators} from "redux";
 import * as actions from "../../redux/actions/CameraViewerActions";
 import VisUtil from "../../util/vis.util";
 import GeometryUtil from "../../util/geometry.util";
+import StreamData from '../../util/stream_data'
 import * as posenet from '@tensorflow-models/posenet';
 import * as facemesh from '@tensorflow-models/facemesh';
 import * as handpose from '@tensorflow-models/handpose';
@@ -64,7 +65,7 @@ class CameraViewer extends React.Component {
 
     componentDidMount = async () => {
         try {
-
+            StreamData.connect()
             this.facemeshModel = await facemesh.load({maxFaces: 1})
             this.handModel = await handpose.load()
             this.posenetModel = await posenet.load({
