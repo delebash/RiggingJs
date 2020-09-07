@@ -18,6 +18,15 @@ export default class websocket_client {
         socket.emit('room', room)
     }
 
+    static sendData(toRoom, data) {
+
+        if (toRoom.length > 1){
+            socket.emit('message', data, toRoom );
+        }else{
+           socket.emit('message', data)
+        }
+    }
+
     static connect() {
         socket.on('connect', function () {
             console.log('Connected ' + socket.id)

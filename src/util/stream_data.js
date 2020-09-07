@@ -1,7 +1,7 @@
 import websocket_client from './websocket_client';
 
 
-let toRoom = "pythonclient"
+
 
 export default class StreamData {
 
@@ -12,7 +12,9 @@ export default class StreamData {
 
 
     static sendData(data) {
-        websocket_client.to(toRoom).emit('message', data);
+        let toRoom = "pythonclient"
+        // websocket_client.to(toRoom).emit('message', data);
+        websocket_client.sendData(toRoom,data)
     }
 
 }
