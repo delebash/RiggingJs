@@ -7,7 +7,6 @@ import ButtonGroup from "@material-ui/core/ButtonGroup";
 import IconButton from "@material-ui/core/IconButton";
 import PlayIcon from "@material-ui/icons/PlayArrow";
 import StopIcon from "@material-ui/icons/Stop";
-import Draggable from "react-draggable";
 import Card from "@material-ui/core/Card";
 import CardHeader from "@material-ui/core/CardHeader";
 import CardContent from "@material-ui/core/CardContent";
@@ -65,7 +64,7 @@ class CameraViewer extends React.Component {
 
     componentDidMount = async () => {
         try {
-            if (StreamData.connect === false) throw "is Empty";
+            StreamData.connect("webclient")
                 this.facemeshModel = await facemesh.load({maxFaces: 1})
                 this.handModel = await handpose.load()
                 this.posenetModel = await posenet.load({
