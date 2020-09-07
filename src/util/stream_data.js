@@ -1,26 +1,21 @@
-import io from 'socket.io-client';
-const socket = io('http://localhost:5000');
-export default class StreamData {
-    static getData(points, bone) {
-        this.sendData({bone,points})
-    }
-    static connect(){
-        socket.on('connect', function(){
-            console.log('a user connected');
+import websocket_client from './websocket_client';
 
-        });
+let myRoom = "webclient"
+let toRoom = "pythonclient"
+let connected
+
+export default class StreamData {
+
+    static connect() {
+        websocket_client.joinRoom(myRoom)
+        connected = websocket_client.connect()
     }
-    static sendData(data){
-        socket.emit('msg', data);
+
+
+    static sendData(data) {
+       if (connected === true){
+             websocket_client.to(toRoom).emit('message', data);
+       }
     }
 
 }
-// socket.on('connect', function(){
-//     console.log('a user connected');
-// });
-// socket.on('event', function(data){
-//
-// });
-// socket.on('disconnect', function(){
-//
-// });

@@ -65,17 +65,16 @@ class CameraViewer extends React.Component {
 
     componentDidMount = async () => {
         try {
-            StreamData.connect()
-            this.facemeshModel = await facemesh.load({maxFaces: 1})
-            this.handModel = await handpose.load()
-            this.posenetModel = await posenet.load({
-                architecture: defaultPoseNetArchitecture,
-                outputStride: defaultStride,
-                inputResolution: defaultInputResolution,
-                multiplier: defaultMultiplier,
-                quantBytes: defaultQuantBytes
-            })
-
+            if (StreamData.connect === false) throw "is Empty";
+                this.facemeshModel = await facemesh.load({maxFaces: 1})
+                this.handModel = await handpose.load()
+                this.posenetModel = await posenet.load({
+                    architecture: defaultPoseNetArchitecture,
+                    outputStride: defaultStride,
+                    inputResolution: defaultInputResolution,
+                    multiplier: defaultMultiplier,
+                    quantBytes: defaultQuantBytes
+                })
         } catch (e) {
             console.log(`error loading the model ${e.toString()}`);
         }

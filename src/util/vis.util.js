@@ -10,6 +10,7 @@ const fingerLookupIndices = {
     ringFinger: [0, 13, 14, 15, 16],
     pinky: [0, 17, 18, 19, 20],
 };
+
 export default class VisUtil {
 
     static drawPath(ctx, points, closePath) {
@@ -161,13 +162,16 @@ export default class VisUtil {
 
     }
     static drawHandKeypoints(ctx,keypoints,color,scale, pointSize) {
+        let data ={}
         const keypointsArray = keypoints;
         const fingers = Object.keys(fingerLookupIndices);
         for (let i = 0; i < fingers.length; i++) {
             const finger = fingers[i];
             const points = fingerLookupIndices[finger].map(idx => keypoints[idx]);
             //Send Data to be streamed
-            StreamData.getData(points, finger)
+            data.points = points
+            data.finger = finger
+            StreamData.sendData(data)
             this.drawHandPath(ctx,points, false,color);
         }
         for (let i = 0; i < keypointsArray.length; i++) {
