@@ -2,6 +2,7 @@ import {TriangulationUtil} from "./triangulation.util"
 import * as posenet from '@tensorflow-models/posenet';
 import StreamData from "./stream_data";
 
+const websockettoRoom = 'pythonclient'
 const math = window.math;
 const fingerLookupIndices = {
     thumb: [0, 1, 2, 3, 4],
@@ -162,18 +163,22 @@ export default class VisUtil {
 
     }
     static drawHandKeypoints(ctx,keypoints,color,scale, pointSize) {
-        let data ={}
+
+        let wholeHand  = []
         const keypointsArray = keypoints;
         const fingers = Object.keys(fingerLookupIndices);
         for (let i = 0; i < fingers.length; i++) {
+            let data ={}
             const finger = fingers[i];
             const points = fingerLookupIndices[finger].map(idx => keypoints[idx]);
             //Send Data to be streamed
             data.points = points
             data.finger = finger
-            StreamData.sendData(data)
+            wholeHand.push(data)
+            // StreamData.send_data(data,websockettoRoom)
             this.drawHandPath(ctx,points, false,color);
         }
+        StreamData.send_data(wholeHand,websockettoRoom)
         for (let i = 0; i < keypointsArray.length; i++) {
             const y = keypointsArray[i][0];
             const x = keypointsArray[i][1];

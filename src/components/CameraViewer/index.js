@@ -22,8 +22,9 @@ import StreamData from '../../util/stream_data'
 import * as posenet from '@tensorflow-models/posenet';
 import * as facemesh from '@tensorflow-models/facemesh';
 import * as handpose from '@tensorflow-models/handpose';
-import * as tf from '@tensorflow/tfjs';
 
+import * as tf from '@tensorflow/tfjs';
+const websocketJoinRoom = 'webclient'
 const requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
 const cancelAnimationFrame = window.cancelAnimationFrame || window.mozCancelAnimationFrame;
 const math = window.math;
@@ -64,7 +65,7 @@ class CameraViewer extends React.Component {
 
     componentDidMount = async () => {
         try {
-            StreamData.connect("webclient")
+            StreamData.connect(websocketJoinRoom)
                 this.facemeshModel = await facemesh.load({maxFaces: 1})
                 this.handModel = await handpose.load()
                 this.posenetModel = await posenet.load({

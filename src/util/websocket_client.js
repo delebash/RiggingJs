@@ -18,26 +18,24 @@ export default class websocket_client {
         socket.emit('room', room)
     }
 
-    static sendData(toRoom, data) {
+    static sendData(data, toRoom) {
 
-        if (toRoom.length > 1){
-            socket.emit('message', data, toRoom );
-        }else{
-           socket.emit('message', data)
+        if (toRoom.length > 1) {
+            socket.emit('data', data, toRoom);
+        } else {
+            socket.emit('data', data)
         }
     }
 
     static connect() {
         socket.on('connect', function () {
             console.log('Connected ' + socket.id)
+
             //Messages from server room
             socket.on('message', function (message) {
                 console.log('Server sent message  ' + message)
             });
 
-            socket.on('join', function (room) {
-                console.log('Joined room  ' + room)
-            })
             //Received form server
             socket.on('connect_timeout', function (timeout) {
                 console.log('connection timeout  ' + timeout)
