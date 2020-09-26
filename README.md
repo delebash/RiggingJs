@@ -2,7 +2,7 @@
 
 # Build And Run
 ````
-git clone https://github.com/haruiz/RiggingJs.git
+https://github.com/delebash/RiggingJs.git
 cd RiggingJs
 npm install
 npm start
