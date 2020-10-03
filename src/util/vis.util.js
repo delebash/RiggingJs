@@ -176,7 +176,7 @@ export default class VisUtil {
             data.finger = finger
             wholeHand.push(data)
             console.log(data)
-            // StreamData.send_data(data,websockettoRoom)
+            StreamData.send_data(JSON.stringify(data),websockettoRoom)
             this.drawHandPath(ctx,points, false,color);
         }
         StreamData.send_data(wholeHand,websockettoRoom)
