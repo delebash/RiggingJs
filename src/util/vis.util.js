@@ -1,5 +1,7 @@
 import {TriangulationUtil} from "./triangulation.util"
 import * as posenet from '@tensorflow-models/posenet';
+import * as handpose from '@tensorflow-models/handpose'
+// import * as facemesh from '@tensorflow-models/face-landmarks-detection'
 import StreamData from "./stream_data";
 
 const websockettoRoom = 'pythonclient'
@@ -173,13 +175,13 @@ export default class VisUtil {
             const points = fingerLookupIndices[finger].map(idx => keypoints[idx]);
             //Send Data to be streamed
             data.points = points
-            data.finger = finger
+            // data.finger = finger
             wholeHand.push(data)
-            console.log(data)
-            StreamData.send_data(JSON.stringify(data),websockettoRoom)
+            // console.log(data)
+            // StreamData.send_data(JSON.stringify(wholeHand),websockettoRoom)
             this.drawHandPath(ctx,points, false,color);
         }
-        StreamData.send_data(wholeHand,websockettoRoom)
+        StreamData.send_data(JSON.stringify(wholeHand),websockettoRoom)
         for (let i = 0; i < keypointsArray.length; i++) {
             const y = keypointsArray[i][0];
             const x = keypointsArray[i][1];

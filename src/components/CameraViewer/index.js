@@ -20,7 +20,7 @@ import VisUtil from "../../util/vis.util";
 import GeometryUtil from "../../util/geometry.util";
 import StreamData from '../../util/stream_data'
 import * as posenet from '@tensorflow-models/posenet';
-import * as facemesh from '@tensorflow-models/facemesh';
+import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
 import * as handpose from '@tensorflow-models/handpose';
 
 import * as tf from '@tensorflow/tfjs';
@@ -47,7 +47,7 @@ class CameraViewer extends React.Component {
         super(props);
         this.cam = null;
         // models
-        this.facemeshModel = null;
+        this.faceLandmarksDetectionModel = null;
         this.posenetModel = null;
         this.handModel = null;
         this.deviceSelectRef = React.createRef();
@@ -66,7 +66,8 @@ class CameraViewer extends React.Component {
     componentDidMount = async () => {
         try {
             StreamData.connect(websocketJoinRoom)
-                this.facemeshModel = await facemesh.load({maxFaces: 1})
+            this.faceLandmarksDetection = await faceLandmarksDetection.load(
+                faceLandmarksDetection.SupportedPackages.mediapipeFacemesh);
                 this.handModel = await handpose.load()
                 this.posenetModel = await posenet.load({
                     architecture: defaultPoseNetArchitecture,
@@ -127,7 +128,7 @@ class CameraViewer extends React.Component {
 
             //Estimate Faces
             if ((estimationId === "Face" || estimationId === "Full Body")) {
-                faces = await this.facemeshModel.estimateFaces(
+                faces = await this.faceLandmarksDetectionModel.estimateFaces(
                     inputFrame,
                     returnTensors,
                     flipHorizontal
@@ -163,11 +164,11 @@ class CameraViewer extends React.Component {
                     if (this.cam.isRunning) {
                         this.drawCanvasCtx.save();
                         this.drawCanvasCtx.translate(0, 0);
-                        VisUtil.drawFace(this.drawCanvasCtx, faces[0],"yellow");
-                        this.updateFaceMeshKeypoints(faces[0]);
+                        //VisUtil.drawFace(this.drawCanvasCtx, faces[0],"yellow");
+                        //this.updateFaceMeshKeypoints(faces[0]);
                     }
                 } else {
-                    this.updateFaceMeshKeypoints(null);
+                    //this.updateFaceMeshKeypoints(null);
                 }
             }
 
@@ -180,12 +181,12 @@ class CameraViewer extends React.Component {
                     if (this.cam.isRunning) {
                         this.drawCanvasCtx.save();
                         this.drawCanvasCtx.translate(0, 0);
-                        VisUtil.drawPose(this.drawCanvasCtx, poses[0],
-                            minPoseConfidence, minPartConfidence, 1, "green");
-                        this.updatePosenetKeypoints(poses[0]);
+                        //VisUtil.drawPose(this.drawCanvasCtx, poses[0],
+                        //    minPoseConfidence, minPartConfidence, 1, "green");
+                        //this.updatePosenetKeypoints(poses[0]);
                     }
                 } else {
-                    this.updatePosenetKeypoints(null);
+                    //this.updatePosenetKeypoints(null);
 
                 }
             }
@@ -223,8 +224,6 @@ class CameraViewer extends React.Component {
         const {videoWidth, videoHeight} = this.props;
         const deviceId = this.deviceSelectRef.current.selectedId();
 
-        const canvas = this.videoCanvasRef.current;
-
         if (Camera.isSupported()) {
             const video = document.querySelector('video');
             this.cam = new Camera(video, videoHeight, videoWidth);
@@ -241,7 +240,7 @@ class CameraViewer extends React.Component {
                         this.videoCanvasCtx.restore();
                         //make inference
 
-                        await this.makePredictions(estimationId);
+                        // await this.makePredictions(estimationId);
                     } else {
                         this.updateFaceMeshKeypoints(null);
                         // this.updateHeadRotation(null);
