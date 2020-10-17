@@ -9,6 +9,7 @@ export default class Camera {
         this.isRunning = false;
     }
     async start(deviceId){
+
         try {
             const constraints = {
                 audio: false,
@@ -24,7 +25,7 @@ export default class Camera {
             return new Promise((resolve) => {
                 this.videoElement.onloadedmetadata = () => {
                     this.isRunning = true;
-                    resolve(this.videoElement);
+                    resolve(this.videoElement );
                 };
             });
         }
