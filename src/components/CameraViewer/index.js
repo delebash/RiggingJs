@@ -17,15 +17,18 @@ import {connect} from "react-redux";
 import {bindActionCreators} from "redux";
 import * as actions from "../../redux/actions/CameraViewerActions";
 import VisUtil from "../../util/vis.util";
+import GeometryUtil from "../../util/geometry.util";
 import StreamData from '../../util/stream_data'
 import * as posenet from '@tensorflow-models/posenet';
 import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
 import * as handpose from '@tensorflow-models/handpose';
-import '@tensorflow/tfjs-backend-webgl';
+
+import * as tf from '@tensorflow/tfjs';
 
 const websocketJoinRoom = 'webclient'
 const requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
 const cancelAnimationFrame = window.cancelAnimationFrame || window.mozCancelAnimationFrame;
+const math = window.math;
 
 const defaultPoseNetArchitecture = 'ResNet50';
 const defaultQuantBytes = 4;
@@ -37,91 +40,167 @@ const minPoseConfidence = 0.15;
 const minPartConfidence = 0.1;
 const returnTensors = false;
 const flipHorizontal = false;
-let videoWidth = 300;
-let videoHeight = 300;
-let ctx, canvas, faceLandmarksDetectionModel, posenetModel, handModel, deviceId, videoElement, cam
+
+let  handModel, ctx, canvas, rafID, that, stream, video
+
+const videoHeight = 300
+const videoWidth = 300
+const fingerLookupIndices = {
+    thumb: [0, 1, 2, 3, 4],
+    indexFinger: [0, 5, 6, 7, 8],
+    middleFinger: [0, 9, 10, 11, 12],
+    ringFinger: [0, 13, 14, 15, 16],
+    pinky: [0, 17, 18, 19, 20]
+};  // for rendering each finger as a polyline
 
 class CameraViewer extends React.Component {
 
     constructor(props) {
         super(props);
-
+        this.cam = null;
+        that = this
+        // models
         this.deviceSelectRef = React.createRef();
         this.estimationSelectRef = React.createRef();
+        // canvas ref
         this.canvasRef = React.createRef();
         this.videoRef = React.createRef();
-
+        // request animation
+        this.requestAnimation = null;
     }
 
     componentDidMount = async () => {
         try {
-            StreamData.connect(websocketJoinRoom)
-            // let faceLandmarksDetection = await faceLandmarksDetection.load(
+            // StreamData.connect(websocketJoinRoom)
+            // faceDetection = await faceLandmarksDetection.load(
             //     faceLandmarksDetection.SupportedPackages.mediapipeFacemesh);
-            handModel = await handpose.load()
-            posenetModel = await posenet.load({
-                architecture: defaultPoseNetArchitecture,
-                outputStride: defaultStride,
-                inputResolution: defaultInputResolution,
-                multiplier: defaultMultiplier,
-                quantBytes: defaultQuantBytes
-            })
+            // handModel = await handpose.load()
+            // posenetModel = await posenet.load({
+            //     architecture: defaultPoseNetArchitecture,
+            //     outputStride: defaultStride,
+            //     inputResolution: defaultInputResolution,
+            //     multiplier: defaultMultiplier,
+            //     quantBytes: defaultQuantBytes
+            // })
         } catch (e) {
             console.log(`error loading the model ${e.toString()}`);
         }
-        // this.videoCanvasCtx = this.videoCanvasRef.current.getContext('2d');
-
     };
 
-
-    /**
-     * grab the current frame and pass it into the facemesh model
-     */
-
-
-
-    makePredictions = async (deviceId, video) => {
-
+    landmarksRealTime = async function (video) {
         async function frameLandmarks() {
             ctx.drawImage(
                 video, 0, 0, videoWidth, videoHeight, 0, 0, canvas.width,
                 canvas.height);
             const predictions = await handModel.estimateHands(video);
             if (predictions.length > 0) {
-                VisUtil.drawKeypoints(ctx, predictions);
+                const result = predictions[0].landmarks;
+                that.drawKeypoints(result, predictions[0].annotations);
             }
-            requestAnimationFrame(frameLandmarks);
+            rafID = requestAnimationFrame(frameLandmarks);
         }
 
-       await frameLandmarks();
-
+        await frameLandmarks();
     }
 
+    drawPoint(y, x, r) {
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, 2 * Math.PI);
+        ctx.fill();
+    }
 
-    /**
-     * start the camera stream
-     * @returns {Promise<void>}
-     */
+    drawKeypoints(keypoints) {
+        const keypointsArray = keypoints;
+
+        for (let i = 0; i < keypointsArray.length; i++) {
+            const y = keypointsArray[i][0];
+            const x = keypointsArray[i][1];
+            this.drawPoint(x - 2, y - 2, 3);
+        }
+
+        const fingers = Object.keys(fingerLookupIndices);
+        for (let i = 0; i < fingers.length; i++) {
+            const finger = fingers[i];
+            const points = fingerLookupIndices[finger].map(idx => keypoints[idx]);
+            this.drawPath(points, false);
+        }
+    }
+
+    drawPath(points, closePath) {
+        const region = new Path2D();
+        region.moveTo(points[0][0], points[0][1]);
+        for (let i = 1; i < points.length; i++) {
+            const point = points[i];
+            region.lineTo(point[0], point[1]);
+        }
+
+        if (closePath) {
+            region.closePath();
+        }
+        ctx.stroke(region);
+    }
+
+    loadStream = async () => {
+        const video = this.videoRef.current
+        stream = await navigator.mediaDevices.getUserMedia({
+            'audio': false,
+            'video': {
+                facingMode: 'user',
+            },
+        });
+        video.srcObject = stream;
+
+        return new Promise((resolve) => {
+            video.onloadedmetadata = () => {
+                resolve(video);
+            };
+        })
+    }
+
+    // devicesList = async () => {
+    //     try {
+    //         let devices = [];
+    //         const devicesList = await navigator.mediaDevices.enumerateDevices();
+    //         for (let i = 0; i !== devicesList.length; ++i) {
+    //             const deviceInfo = devicesList[i];
+    //             if (deviceInfo.kind === 'videoinput') {
+    //                 devices.push({
+    //                     "id": deviceInfo.deviceId,
+    //                     "label": deviceInfo.label || `camera ${i}`
+    //                 });
+    //             }
+    //         }
+    //         return devices;
+    //
+    //     } catch (e) {
+    //         throw new Error("error listing the devices");
+    //     }
+    // }
+
+    stop = async () => {
+        return new Promise((resolve, reject) => {
+            const tracks = stream.getTracks();
+            tracks.forEach(function (track) {
+                track.stop();
+            });
+            video.srcObject= null;
+            return resolve();
+        });
+    }
+
     startCamera = async () => {
-        deviceId = this.deviceSelectRef.current.selectedId();
-        videoElement = document.querySelector('video');
-        ctx = this.canvasRef.current.getContext('2d');
+        let video;
+        handModel = await handpose.load();
+        video = await this.loadStream()
 
-        handModel = await handpose.load({maxContinuousChecks:'infinity', detectionConfidence: 1.0
-            ,iouThreshold : 0.3, scoreThreshold : 0.75});
-
-        cam = new Camera(videoElement, videoHeight, videoWidth)
-        let video = await cam.start(deviceId);
         canvas = this.canvasRef.current
-
-        videoWidth = video.videoWidth;
-        videoHeight = video.videoHeight;
 
         canvas.width = videoWidth;
         canvas.height = videoHeight;
         video.width = videoWidth;
         video.height = videoHeight;
 
+        ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, videoWidth, videoHeight);
         ctx.strokeStyle = 'red';
         ctx.fillStyle = 'red';
@@ -129,22 +208,15 @@ class CameraViewer extends React.Component {
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
 
-        await this.makePredictions(deviceId, video);
-    }
+        await this.landmarksRealTime(video);
+    };
 
-
-    /**
-     * stop the camera stream
-     * @returns {Promise<void>}
-     */
     stopCamera = async () => {
-        if (cam && cam.isRunning) {
-            await cam.stop();
-        }
+        await this.stop();
     };
 
     btnStartCamClickEvt = async () => {
-        await this.stopCamera();
+        // await this.stopCamera();
         await this.startCamera();
     };
 
@@ -153,7 +225,6 @@ class CameraViewer extends React.Component {
     };
 
     render() {
-
         const wrapperStyle = {
             position: "relative",
             width: videoWidth,
@@ -245,181 +316,4 @@ class CameraViewer extends React.Component {
     }
 }
 
-
 export default CameraViewer
-
-
-// makePredictions = async (estimationId, video) => {
-//
-//     // try {
-//     let faces
-//     let poses
-//     let hands
-//
-//     //Estimate Faces
-//     // if ((estimationId === "Face" || estimationId === "Full Body")) {
-//     //     faces = await this.faceLandmarksDetectionModel.estimateFaces(
-//     //         inputFrame,
-//     //         returnTensors,
-//     //         flipHorizontal
-//     //     )
-//     // }
-//
-//     //Estimate Hand
-//     if ((estimationId === "Hand" || estimationId === "Full Body")) {
-//         hands = await this.handModel.estimateHands(video);
-//     }
-//
-//     //Estimate Pose
-//     // if ((estimationId === "Pose" || estimationId === "Full Body")) {
-//     //     poses = await this.posenetModel.estimatePoses(inputFrame, {
-//     //         decodingMethod: 'single-person',
-//     //         maxDetections: 1,
-//     //         scoreThreshold: minPartConfidence,
-//     //         nmsRadius: nmsRadius
-//     //     })
-//     // }
-//     //
-//     // // clear canvas
-//     // this.drawCanvasCtx.clearRect(0, 0, videoWidth, videoHeight);
-//     //
-//     // //draw facemesh predictions
-//     // if ((estimationId === "Face" || estimationId === "Full Body")) {
-//     //
-//     //     if (faces && faces.length > 0) {
-//     //         this.updateFaceMeshKeypoints(faces[0]);
-//     //         if (this.cam.isRunning) {
-//     //             this.drawCanvasCtx.save();
-//     //             this.drawCanvasCtx.translate(0, 0);
-//     //             VisUtil.drawFace(this.drawCanvasCtx, faces[0],"yellow");
-//     //             this.updateFaceMeshKeypoints(faces[0]);
-//     //         }
-//     //     } else {
-//     //         this.updateFaceMeshKeypoints(null);
-//     //     }
-//     // }
-//     //
-//     // this.drawCanvasCtx.restore();
-//     //
-//     // //draw posenet predictions
-//     // if ((estimationId === "Pose" || estimationId === "Full Body")) {
-//     //
-//     //     if (poses && poses.length > 0) {
-//     //         if (this.cam.isRunning) {
-//     //             this.drawCanvasCtx.save();
-//     //             this.drawCanvasCtx.translate(0, 0);
-//     //             VisUtil.drawPose(this.drawCanvasCtx, poses[0],
-//     //                 minPoseConfidence, minPartConfidence, 1, "green");
-//     //             this.updatePosenetKeypoints(poses[0]);
-//     //         }
-//     //     } else {
-//     //         this.updatePosenetKeypoints(null);
-//     //
-//     //     }
-//     // }
-//     //
-//     // this.drawCanvasCtx.restore();
-//
-//     //draw hand predictions
-//     //     if ((estimationId === "Hand" || estimationId === "Full Body")) {
-//     //
-//     //         if (hands && hands.length > 0) {
-//     //             if (this.cam.isRunning) {
-//     //                 // this.drawCanvasCtx.save();
-//     //                 // this.drawCanvasCtx.translate(0, 0);
-//     //                 //  this.drawCanvasCtx.scale(-1, 1);
-//     //                 VisUtil.drawHand(video, this.drawCanvasCtx, hands, 1, "red", videoHeight, videoWidth);
-//     //             }
-//     //         } else {
-//     //
-//     //         }
-//     //     }
-//     //
-//     //     this.drawCanvasCtx.restore();
-//     //
-//     // } catch (e) {
-//     //     console.log(`error making the predictions ${e}`);
-//     // }
-// }
-
-// async setupCamera() {
-//     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-//         throw new Error(
-//             'Browser API navigator.mediaDevices.getUserMedia not available');
-//     }
-//
-//     const video = document.getElementById('video');
-//     const stream = await navigator.mediaDevices.getUserMedia({
-//         'audio': false,
-//         'video': {
-//             facingMode: 'user',
-//             // Only setting the video to a specified size in order to accommodate a
-//             // point cloud, so on mobile devices accept the default size.
-//             width: mobile ? undefined : VIDEO_WIDTH,
-//             height: mobile ? undefined : VIDEO_HEIGHT
-//         },
-//     });
-//     video.srcObject = stream;
-//
-//     return new Promise((resolve) => {
-//         video.onloadedmetadata = () => {
-//             resolve(video);
-//         };
-//     });
-// }
-
-//
-// async loadVideo() {
-//     const video = await cam, start
-//     ();
-//     video.play();
-//     return video;
-// }
-
-
-// const deviceId = this.deviceSelectRef.current.selectedId();
-//
-// if (Camera.isSupported()) {
-//     const videoElement = document.querySelector('video');
-//     this.cam = new Camera(videoElement, videoHeight, videoWidth);
-//     let video = await this.cam.start(deviceId);
-//     video.width = videoWidth;
-//
-//     await this.makePredictions(deviceId, video);
-
-//     video.height = videoHeight;
-//
-//     let renderVideo = async () => {
-//         try {
-//             let estimationId = this.estimationSelectRef.current.selectedId();
-//             if (this.cam.isRunning) {
-//                 this.videoCanvasCtx.clearRect(0, 0, videoWidth, videoHeight);
-//                 this.videoCanvasCtx.save();
-//                 this.videoCanvasCtx.translate(videoWidth, 0);
-//                 this.videoCanvasCtx.scale(-1, 1);
-//                 this.videoCanvasCtx.drawImage(video, 0, 0, videoWidth, videoHeight);
-//                 this.videoCanvasCtx.restore();
-//                 //make inference
-//
-//                 await this.makePredictions(estimationId, video);
-//             } else {
-//                 cancelAnimationFrame(this.requestAnimation); // kill animation
-//                 return;
-//             }
-//         } catch (e) {
-//             console.log("render interrupted" + e.toString());
-//         }
-//         this.requestAnimation = requestAnimationFrame(renderVideo);
-//     };
-//     await renderVideo();
-// } else {
-//     throw
-//     new
-//
-//     Error(
-//
-//     "Camera in not supported, please try with another browser"
-// )
-//     ;
-// }
-// }

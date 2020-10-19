@@ -16,6 +16,7 @@
     "@tensorflow-models/handpose": "0.0.6",
     "@tensorflow-models/posenet": "^2.2.1",
     "@tensorflow/tfjs": "^2.6.0",
+    "@tensorflow/tfjs-backend-webgl": "^2.6.0",
     "@testing-library/jest-dom": "^5.11.4",
     "@testing-library/react": "^11.0.4",
     "@testing-library/user-event": "^12.1.7",
