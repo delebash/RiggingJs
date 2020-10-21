@@ -117,7 +117,7 @@ class CameraViewer extends React.Component {
             landmarks = predictions[0].landmarks;
             annotations = predictions[0].annotations
             if (this.cam.isRunning) {
-                VisUtil.drawKeypoints(this.videoCanvasCtx, landmarks, annotations);
+                VisUtil.drawHandKeypoints(this.videoCanvasCtx, landmarks, annotations);
             }
         }
     }

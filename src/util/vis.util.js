@@ -14,15 +14,14 @@ let ctx
 
 export default class VisUtil {
 
-    static drawHandPoint(ctx, y, x, r, color, pointSize) {
+    static drawHandPoint(y, x, r, color, pointSize) {
         ctx.beginPath();
         ctx.arc(x, y, r, 0, 2 * Math.PI);
-        ctx.fillStyle = "blue";
         ctx.fill();
     }
 
-    static drawHandKeypoints(ctx, keypoints, color, scale, pointSize) {
-
+    static drawHandKeypoints(videoCanvasCtx, keypoints, color) {
+        ctx = videoCanvasCtx
         let wholeHand = []
         const keypointsArray = keypoints;
         const fingers = Object.keys(fingerLookupIndices);
@@ -34,28 +33,26 @@ export default class VisUtil {
             data.points = points
             // data.finger = finger
             wholeHand.push(data)
-            this.drawHandPath(ctx, points, false, color);
+            this.drawHandPath(points, false, color);
         }
         StreamData.send_data(JSON.stringify(wholeHand), websockettoRoom)
         for (let i = 0; i < keypointsArray.length; i++) {
             const y = keypointsArray[i][0];
             const x = keypointsArray[i][1];
-            this.drawHandPoint(ctx, x * scale, y * scale, 2, color, pointSize);
+            this.drawHandPoint(x - 2, y - 2, 3);
         }
     }
 
-    static drawHandPath(ctx, points, closePath, color) {
+    static drawHandPath(points, closePath, color) {
         const region = new Path2D();
         region.moveTo(points[0][0], points[0][1]);
         for (let i = 1; i < points.length; i++) {
             const point = points[i];
             region.lineTo(point[0], point[1]);
         }
-
         if (closePath) {
             region.closePath();
         }
-        ctx.strokeStyle = color;
         ctx.stroke(region);
     }
 
