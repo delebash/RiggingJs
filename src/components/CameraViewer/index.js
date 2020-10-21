@@ -13,22 +13,17 @@ import CardContent from "@material-ui/core/CardContent";
 import MoreVertIcon from "@material-ui/icons/MoreVert";
 import VideoCamIcon from "@material-ui/icons/Videocam";
 import moment from "moment";
-import {connect} from "react-redux";
-import {bindActionCreators} from "redux";
-import * as actions from "../../redux/actions/CameraViewerActions";
 import VisUtil from "../../util/vis.util";
-import GeometryUtil from "../../util/geometry.util";
 import StreamData from '../../util/stream_data'
 import * as posenet from '@tensorflow-models/posenet';
 import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
 import * as handpose from '@tensorflow-models/handpose';
 
-import * as tf from '@tensorflow/tfjs';
 
 const websocketJoinRoom = 'webclient'
 const requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
 const cancelAnimationFrame = window.cancelAnimationFrame || window.mozCancelAnimationFrame;
-const math = window.math;
+
 
 const defaultPoseNetArchitecture = 'ResNet50';
 const defaultQuantBytes = 4;
@@ -40,183 +35,149 @@ const minPoseConfidence = 0.15;
 const minPartConfidence = 0.1;
 const returnTensors = false;
 const flipHorizontal = false;
-
-let  handModel, ctx, canvas, rafID, that, stream, video
-
-const videoHeight = 300
 const videoWidth = 300
-const fingerLookupIndices = {
-    thumb: [0, 1, 2, 3, 4],
-    indexFinger: [0, 5, 6, 7, 8],
-    middleFinger: [0, 9, 10, 11, 12],
-    ringFinger: [0, 13, 14, 15, 16],
-    pinky: [0, 17, 18, 19, 20]
-};  // for rendering each finger as a polyline
+const videoHeight = 300
 
 class CameraViewer extends React.Component {
 
     constructor(props) {
         super(props);
         this.cam = null;
-        that = this
         // models
+        this.faceLandmarksDetectionModel = null;
+        this.posenetModel = null;
+        this.handModel = null;
         this.deviceSelectRef = React.createRef();
         this.estimationSelectRef = React.createRef();
         // canvas ref
-        this.canvasRef = React.createRef();
+        this.videoCanvasRef = React.createRef();
         this.videoRef = React.createRef();
+        // canvas contexts
+        this.videoCanvasCtx = null;
         // request animation
         this.requestAnimation = null;
     }
 
     componentDidMount = async () => {
         try {
-            // StreamData.connect(websocketJoinRoom)
-            // faceDetection = await faceLandmarksDetection.load(
-            //     faceLandmarksDetection.SupportedPackages.mediapipeFacemesh);
-            // handModel = await handpose.load()
-            // posenetModel = await posenet.load({
-            //     architecture: defaultPoseNetArchitecture,
-            //     outputStride: defaultStride,
-            //     inputResolution: defaultInputResolution,
-            //     multiplier: defaultMultiplier,
-            //     quantBytes: defaultQuantBytes
-            // })
+            StreamData.connect(websocketJoinRoom)
+            this.faceLandmarksDetection = await faceLandmarksDetection.load(
+                faceLandmarksDetection.SupportedPackages.mediapipeFacemesh);
+            this.handModel = await handpose.load({detectionConfidence:1.0})
+            this.posenetModel = await posenet.load({
+                architecture: defaultPoseNetArchitecture,
+                outputStride: defaultStride,
+                inputResolution: defaultInputResolution,
+                multiplier: defaultMultiplier,
+                quantBytes: defaultQuantBytes
+            })
         } catch (e) {
             console.log(`error loading the model ${e.toString()}`);
         }
+        this.videoCanvasCtx = this.videoCanvasRef.current.getContext('2d');
     };
 
-    landmarksRealTime = async function (video) {
-        async function frameLandmarks() {
-            ctx.drawImage(
-                video, 0, 0, videoWidth, videoHeight, 0, 0, canvas.width,
-                canvas.height);
-            const predictions = await handModel.estimateHands(video);
-            if (predictions.length > 0) {
-                const result = predictions[0].landmarks;
-                that.drawKeypoints(result, predictions[0].annotations);
+    makePredictions = async (estimationId, videoCanvasCtx, video, videoWidth, videoHeight, canvas) => {
+
+        videoCanvasCtx.drawImage(
+            video, 0, 0, videoWidth, videoHeight, 0, 0, canvas.width,
+            canvas.height);
+
+        let predictions = ""
+        let landmarks = ""
+        let annotations = ""
+
+        //Estimate Faces
+        if ((estimationId === "Face" || estimationId === "Full Body")) {
+            predictions = await this.faceLandmarksDetectionModel.estimateFaces(
+                video,
+                returnTensors,
+                flipHorizontal
+            )
+        }
+
+        //Estimate Hand
+        if ((estimationId === "Hand" || estimationId === "Full Body")) {
+            predictions = await this.handModel.estimateHands(
+                video,
+                flipHorizontal
+            );
+        }
+        //Estimate Pose
+        if ((estimationId === "Pose" || estimationId === "Full Body")) {
+            predictions = await this.posenetModel.estimatePoses(video, {
+                decodingMethod: 'single-person',
+                maxDetections: 1,
+                scoreThreshold: minPartConfidence,
+                nmsRadius: nmsRadius
+            })
+        }
+
+        if (predictions && predictions.length > 0) {
+            landmarks = predictions[0].landmarks;
+            annotations = predictions[0].annotations
+            if (this.cam.isRunning) {
+                VisUtil.drawKeypoints(this.videoCanvasCtx, landmarks, annotations);
             }
-            rafID = requestAnimationFrame(frameLandmarks);
-        }
-
-        await frameLandmarks();
-    }
-
-    drawPoint(y, x, r) {
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, 2 * Math.PI);
-        ctx.fill();
-    }
-
-    drawKeypoints(keypoints) {
-        const keypointsArray = keypoints;
-
-        for (let i = 0; i < keypointsArray.length; i++) {
-            const y = keypointsArray[i][0];
-            const x = keypointsArray[i][1];
-            this.drawPoint(x - 2, y - 2, 3);
-        }
-
-        const fingers = Object.keys(fingerLookupIndices);
-        for (let i = 0; i < fingers.length; i++) {
-            const finger = fingers[i];
-            const points = fingerLookupIndices[finger].map(idx => keypoints[idx]);
-            this.drawPath(points, false);
         }
     }
 
-    drawPath(points, closePath) {
-        const region = new Path2D();
-        region.moveTo(points[0][0], points[0][1]);
-        for (let i = 1; i < points.length; i++) {
-            const point = points[i];
-            region.lineTo(point[0], point[1]);
-        }
-
-        if (closePath) {
-            region.closePath();
-        }
-        ctx.stroke(region);
-    }
-
-    loadStream = async () => {
-        const video = this.videoRef.current
-        stream = await navigator.mediaDevices.getUserMedia({
-            'audio': false,
-            'video': {
-                facingMode: 'user',
-            },
-        });
-        video.srcObject = stream;
-
-        return new Promise((resolve) => {
-            video.onloadedmetadata = () => {
-                resolve(video);
-            };
-        })
-    }
-
-    // devicesList = async () => {
-    //     try {
-    //         let devices = [];
-    //         const devicesList = await navigator.mediaDevices.enumerateDevices();
-    //         for (let i = 0; i !== devicesList.length; ++i) {
-    //             const deviceInfo = devicesList[i];
-    //             if (deviceInfo.kind === 'videoinput') {
-    //                 devices.push({
-    //                     "id": deviceInfo.deviceId,
-    //                     "label": deviceInfo.label || `camera ${i}`
-    //                 });
-    //             }
-    //         }
-    //         return devices;
-    //
-    //     } catch (e) {
-    //         throw new Error("error listing the devices");
-    //     }
-    // }
-
-    stop = async () => {
-        return new Promise((resolve, reject) => {
-            const tracks = stream.getTracks();
-            tracks.forEach(function (track) {
-                track.stop();
-            });
-            video.srcObject= null;
-            return resolve();
-        });
-    }
-
+    /**
+     * start the camera stream
+     * @returns {Promise<void>}
+     */
     startCamera = async () => {
-        let video;
-        handModel = await handpose.load();
-        video = await this.loadStream()
+        const deviceId = this.deviceSelectRef.current.selectedId();
 
-        canvas = this.canvasRef.current
+        if (Camera.isSupported()) {
+            const video = document.querySelector('video');
+            this.cam = new Camera(video, videoHeight, videoWidth);
+            await this.cam.start(deviceId);
+            let renderVideo = async () => {
+                try {
+                    let estimationId = this.estimationSelectRef.current.selectedId();
+                    let canvas = this.videoCanvasRef.current;
+                    if (this.cam.isRunning) {
+                        canvas.width = videoWidth;
+                        canvas.height = videoHeight;
+                        video.width = videoWidth;
+                        video.height = videoHeight;
 
-        canvas.width = videoWidth;
-        canvas.height = videoHeight;
-        video.width = videoWidth;
-        video.height = videoHeight;
+                        this.videoCanvasCtx = canvas.getContext('2d');
+                        this.videoCanvasCtx.clearRect(0, 0, videoWidth, videoHeight);
+                        this.videoCanvasCtx.strokeStyle = 'red';
+                        this.videoCanvasCtx.fillStyle = 'red';
+                        this.videoCanvasCtx.translate(canvas.width, 0);
+                        this.videoCanvasCtx.scale(-1, 1);
 
-        ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, videoWidth, videoHeight);
-        ctx.strokeStyle = 'red';
-        ctx.fillStyle = 'red';
+                        await this.makePredictions(estimationId, this.videoCanvasCtx, video, videoWidth, videoHeight, canvas);
 
-        ctx.translate(canvas.width, 0);
-        ctx.scale(-1, 1);
-
-        await this.landmarksRealTime(video);
+                    } else {
+                        cancelAnimationFrame(this.requestAnimation); // kill animation
+                        return;
+                    }
+                } catch (e) {
+                    console.log("render interrupted" + e.toString());
+                }
+                this.requestAnimation = requestAnimationFrame(renderVideo);
+            };
+            await renderVideo();
+        } else {
+            throw new Error("Camera in not supported, please try with another browser");
+        }
     };
-
+    /**
+     * stop the camera stream
+     * @returns {Promise<void>}
+     */
     stopCamera = async () => {
-        await this.stop();
+        if (this.cam && this.cam.isRunning) {
+            await this.cam.stop();
+        }
     };
 
     btnStartCamClickEvt = async () => {
-        // await this.stopCamera();
+        await this.stopCamera();
         await this.startCamera();
     };
 
@@ -280,7 +241,7 @@ class CameraViewer extends React.Component {
                             />
                             <div style={wrapperStyle}>
                                 <canvas
-                                    ref={this.canvasRef}
+                                    ref={this.videoCanvasRef}
                                     width={videoWidth}
                                     height={videoHeight}
                                     style={{
