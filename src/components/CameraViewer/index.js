@@ -13,18 +13,18 @@ import CardContent from "@material-ui/core/CardContent";
 import MoreVertIcon from "@material-ui/icons/MoreVert";
 import VideoCamIcon from "@material-ui/icons/Videocam";
 import moment from "moment";
+
 import VisUtil from "../../util/vis.util";
+
 import StreamData from '../../util/stream_data'
 import * as posenet from '@tensorflow-models/posenet';
 import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
 import * as handpose from '@tensorflow-models/handpose';
-
+import * as tf from '@tensorflow/tfjs';
 
 const websocketJoinRoom = 'webclient'
 const requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
 const cancelAnimationFrame = window.cancelAnimationFrame || window.mozCancelAnimationFrame;
-
-
 const defaultPoseNetArchitecture = 'ResNet50';
 const defaultQuantBytes = 4;
 const defaultMultiplier = 1.0;
@@ -63,7 +63,7 @@ class CameraViewer extends React.Component {
             StreamData.connect(websocketJoinRoom)
             this.faceLandmarksDetection = await faceLandmarksDetection.load(
                 faceLandmarksDetection.SupportedPackages.mediapipeFacemesh);
-            this.handModel = await handpose.load({detectionConfidence:1.0})
+            this.handModel = await handpose.load({detectionConfidence : 0.7})
             this.posenetModel = await posenet.load({
                 architecture: defaultPoseNetArchitecture,
                 outputStride: defaultStride,

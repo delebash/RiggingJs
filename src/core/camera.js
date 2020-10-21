@@ -1,14 +1,15 @@
 export default class Camera {
     constructor(videoElement,
-                width=250,
-                height=250) {
+                width = 250,
+                height = 250) {
         this.widht = width;
         this.height = height;
         this.videoElement = videoElement;
         this.stream = null;
         this.isRunning = false;
     }
-    async start(deviceId){
+
+    async start(deviceId) {
         try {
             const constraints = {
                 audio: false,
@@ -27,15 +28,15 @@ export default class Camera {
                     resolve(this.videoElement);
                 };
             });
-        }
-        catch (e) {
+        } catch (e) {
             console.log("Error starting the camera");
         }
     }
-    async stop(){
-        return new Promise((resolve, reject)=>{
+
+    async stop() {
+        return new Promise((resolve, reject) => {
             const tracks = this.stream.getTracks();
-            tracks.forEach(function(track) {
+            tracks.forEach(function (track) {
                 track.stop();
             });
             this.videoElement.srcObject = null;
@@ -43,26 +44,27 @@ export default class Camera {
             return resolve();
         });
     }
+
     static async devicesList() {
-        try{
+        try {
             let devices = [];
             const devicesList = await navigator.mediaDevices.enumerateDevices();
             for (let i = 0; i !== devicesList.length; ++i) {
                 const deviceInfo = devicesList[i];
-                if (deviceInfo.kind === 'videoinput'){
+                if (deviceInfo.kind === 'videoinput') {
                     devices.push({
-                        "id" : deviceInfo.deviceId,
+                        "id": deviceInfo.deviceId,
                         "label": deviceInfo.label || `camera ${i}`
                     });
                 }
             }
             return devices;
-        }
-        catch (e) {
+        } catch (e) {
             throw new Error("error listing the devices");
         }
     }
-    static isSupported(){
+
+    static isSupported() {
         return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
     }
 }
